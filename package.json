@@ -1,0 +1,11 @@
+{
+  "name": "hayase-nyaa-ptbr",
+  "version": "0.1.0",
+  "description": "Extensão do Hayase para buscar torrents de anime em PT-BR no Nyaa.si.",
+  "main": "index.json",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test.mjs"
+  }
+}

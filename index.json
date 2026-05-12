@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Nyaa PT-BR",
+    "id": "nyaa-ptbr",
+    "description": "Busca torrents de anime em PT-BR (legendado e dublado) no Nyaa.si, filtrando releases de fansubs brasileiras (Anitsu, WF, FênixFansub, Anime no Sekai e similares).",
+    "version": "0.1.0",
+    "type": "torrent",
+    "accuracy": "medium",
+    "ratio": 0,
+    "media": "both",
+    "languages": [
+      "BR"
+    ],
+    "icon": "https://nyaa.si/static/favicon.png",
+    "update": "gh:sujirobase-ctrl/devin-hayase-nyaa-ptbr",
+    "code": "gh:sujirobase-ctrl/devin-hayase-nyaa-ptbr/nyaa-ptbr"
+  }
+]
