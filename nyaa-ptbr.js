@@ -16,11 +16,16 @@ const NYAA_BASE = 'https://nyaa.si'
 const RSS_PATH = '/?page=rss'
 const ANIME_CATEGORY = '1_0'
 
-const PT_BR_REGEX = /\b(PT[\s_-]?BR|PTBR|Portugu(?:e|ê)s|Brasil|Brazilian|Dublado|Legendado(?:\s+em\s+Portugu(?:e|ê)s)?|\[BR\]|\(BR\)|\bDUB\s*PT\b|\bSUB\s*PT\b)\b/i
+const PT_BR_REGEX = /\b(PT[\s_.-]?BR|PTBR|Portugu(?:e|ê)s|Brasil|Brazilian|Dublado|Dublagem|Legendado(?:\s+em\s+Portugu(?:e|ê)s)?|\[BR\]|\(BR\)|\bDUB\s*PT\b|\bSUB\s*PT\b)\b/i
 const KNOWN_GROUPS = [
+  // Brazilian fansubs / encoders we have evidence are active on Nyaa
   'Anitsu', 'WF', 'FenixFansub', 'FênixFansub', 'Anime no Sekai',
   'Kekkan', 'SubVision', 'HollowStudios', 'AYA', 'Sully FANSUB',
-  'Punch Sub', 'PunchSub', 'CocaSubs', 'Trix'
+  'Punch Sub', 'PunchSub', 'CocaSubs', 'Trix',
+  'TPABR', 'Anipakku', 'KaraSub', 'NekoBR', 'NekoPT', 'AnimeFire',
+  'AnimesGames', 'AnimesOnline', 'FocoOtaku', 'Otanix', 'BetaSubs',
+  'AnimesProject', 'BR-Anime', 'BrSub', 'BrSubs', 'AniBR', 'Aniyume',
+  'Punch-Sub', 'IcebergFansub', 'Iceberg Fansub'
 ]
 const KNOWN_GROUPS_REGEX = new RegExp('\\[(?:' + KNOWN_GROUPS.map(g => g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\]', 'i')
 
@@ -194,6 +199,7 @@ function looksLikeMovie (title) {
 
 /**
  * Sanitise an anime title into something Nyaa's search can match reliably.
+ * Removes diacritics, replaces non-word punctuation with spaces, and trims.
  * @param {string} title
  * @returns {string}
  */
@@ -207,42 +213,76 @@ function normaliseTitle (title) {
 }
 
 /**
- * Choose the most useful, distinct titles to query Nyaa with.
- * @param {string[]} titles
- * @returns {string[]}
+ * Strip season/part/cour suffixes ("4th Season", "Season 4", "S4", "Part 2")
+ * and parenthetical aliases. Nyaa's search is literal AND-based, so long
+ * suffixes routinely cause zero-hit queries even when releases exist.
+ * @param {string} title
  */
-function pickQueryTitles (titles) {
-  const seen = new Set()
-  const picks = []
-  for (const raw of titles ?? []) {
-    if (!raw) continue
-    const normalised = normaliseTitle(raw)
-    if (!normalised) continue
-    const key = normalised.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
-    picks.push(normalised)
-    if (picks.length >= 3) break
-  }
-  return picks
+function stripSeasonNoise (title) {
+  return title
+    .replace(/\(([^)]*)\)/g, ' ')
+    .replace(/\b\d+(?:st|nd|rd|th)\s+season\b/gi, ' ')
+    .replace(/\bseason\s+\d+\b/gi, ' ')
+    .replace(/\bs\d{1,2}\b/gi, ' ')
+    .replace(/\bpart\s+\d+\b/gi, ' ')
+    .replace(/\bcour\s+\d+\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
- * Build the list of Nyaa RSS URLs to fetch for a single search invocation.
- * @param {string} title
- * @param {{ type?: 'sub' | 'dub' }} query
+ * Generate a deduplicated list of query strings derived from the AniList
+ * title set. We emit increasingly broad variants so Nyaa's literal search
+ * still returns hits when the canonical romaji title is too specific.
+ * @param {string[]} titles
+ * @returns {string[]}
  */
-function buildQueries (title, query) {
-  const base = `${NYAA_BASE}${RSS_PATH}&c=${ANIME_CATEGORY}&f=0&s=seeders&o=desc`
-  const queries = [
-    `${base}&q=${encodeURIComponent(`${title} PT-BR`)}`,
-    `${base}&q=${encodeURIComponent(`${title} Anitsu`)}`,
-    `${base}&q=${encodeURIComponent(`${title} WF`)}`
-  ]
-  if (query.type === 'dub') {
-    queries.push(`${base}&q=${encodeURIComponent(`${title} Dublado`)}`)
+function generateTitleVariants (titles) {
+  const variants = []
+  const seen = new Set()
+  const push = (raw) => {
+    if (!raw) return
+    const t = raw.trim()
+    if (t.length < 3) return
+    const key = t.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    variants.push(t)
   }
-  return queries
+  for (const raw of titles ?? []) {
+    if (!raw) continue
+    const full = normaliseTitle(raw)
+    if (!full) continue
+    push(full)
+    const stripped = stripSeasonNoise(full)
+    push(stripped)
+    // Reduce extremely long names by emitting their leading 2-3 word forms,
+    // which tends to surface group/episode releases that drop subtitle phrases.
+    const source = stripped || full
+    const words = source.split(/\s+/).filter(Boolean)
+    if (words.length > 4) push(words.slice(0, 4).join(' '))
+    if (words.length > 3) push(words.slice(0, 3).join(' '))
+    if (words.length > 2) push(words.slice(0, 2).join(' '))
+  }
+  return variants.slice(0, 8)
+}
+
+/**
+ * Build the list of Nyaa RSS URLs to fetch for a single title variant.
+ * The three suffixes are chosen so that any of the following common release
+ * patterns are surfaced exactly once:
+ *   - explicit "PT-BR" / "PTBR" tags in the title
+ *   - "Dublado" / dubbing markers
+ *   - raw [Anitsu] tagged releases that omit any language marker
+ * @param {string} title
+ */
+function buildQueries (title) {
+  const base = `${NYAA_BASE}${RSS_PATH}&c=${ANIME_CATEGORY}&f=0&s=seeders&o=desc`
+  return [
+    `${base}&q=${encodeURIComponent(`${title} PT-BR`)}`,
+    `${base}&q=${encodeURIComponent(`${title} Dublado`)}`,
+    `${base}&q=${encodeURIComponent(`${title} Anitsu`)}`
+  ]
 }
 
 /**
@@ -294,12 +334,12 @@ async function fetchRSS (url, fetcher) {
  * @param {import('./types').TorrentQuery} query
  */
 async function fetchCandidates (query) {
-  const titles = pickQueryTitles(query.titles)
+  const titles = generateTitleVariants(query.titles)
   if (titles.length === 0) return []
 
   const urls = []
   for (const title of titles) {
-    for (const url of buildQueries(title, query)) {
+    for (const url of buildQueries(title)) {
       if (!urls.includes(url)) urls.push(url)
     }
   }
@@ -326,10 +366,10 @@ async function fetchCandidates (query) {
  */
 function matchesResolution (title, required) {
   if (!required) return true
-  const target = required + 'p'
-  const found = title.match(/\b(2160p|1080p|720p|540p|480p)\b/i)
+  const found = title.match(/\b(2160|1080|720|540|480)p?\b/i) ??
+    title.match(/\b(?:1920x1080|1280x720|3840x2160)\b/i)
   if (!found) return true
-  const num = parseInt(found[1], 10)
+  const num = parseInt(found[1] ?? found[0], 10) || 0
   const req = parseInt(required, 10)
   return num >= req
 }

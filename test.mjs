@@ -63,6 +63,25 @@ async function main () {
   })
   summarise('Solo Leveling S2 ep 1', solo)
 
+  // Reproduces the user's reported failure: Re:Zero S4, the exact title shape
+  // Hayase passes via AniList (long romaji + english + dash-stripped + S4).
+  console.log('\n-> single(Re:Zero S4 ep 1) [user repro: was returning 0]')
+  const rezero = await ext.single({
+    ...baseQuery,
+    anilistId: 189046,
+    titles: [
+      'Re:Zero kara Hajimeru Isekai Seikatsu 4th Season',
+      'Re:Zero kara Hajimeru Isekai Seikatsu S4',
+      'Re:ZERO -Starting Life in Another World- Season 4',
+      'Re:ZERO -Starting Life in Another World- S4',
+      'Re:ZERO Starting Life in Another World Season 4',
+      'Re:ZERO Starting Life in Another World S4'
+    ],
+    episode: 1,
+    resolution: '1080'
+  })
+  summarise('Re:Zero S4 ep 1 @1080p', rezero)
+
   console.log('\nAll smoke checks finished.')
 }
 
