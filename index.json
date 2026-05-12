@@ -4,7 +4,7 @@
     "name": "Nyaa PT-BR",
     "id": "nyaa-ptbr",
     "description": "Busca torrents de anime em PT-BR (legendado e dublado) no Nyaa.si, filtrando releases de fansubs brasileiras conhecidas (Anitsu, WF, FênixFansub, Anime no Sekai, entre outras).",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "type": "torrent",
     "accuracy": "medium",
     "ratio": 0,
