@@ -1,4 +1,16 @@
-import AbstractSource from './abstract.js'
+/**
+ * Nyaa PT-BR Hayase extension. Indexes Brazilian-Portuguese anime torrents
+ * available on Nyaa.si and returns them as Hayase TorrentResult objects.
+ *
+ * Self-contained ES module: no relative imports, no external dependencies.
+ */
+
+class AbstractSource {
+  single () { throw new Error("Source doesn't implement single") }
+  batch () { throw new Error("Source doesn't implement batch") }
+  movie () { throw new Error("Source doesn't implement movie") }
+  test () { throw new Error("Source doesn't implement test") }
+}
 
 const NYAA_BASE = 'https://nyaa.si'
 const RSS_PATH = '/?page=rss'
@@ -260,8 +272,9 @@ function buildMagnet (hash, title) {
  * @param {typeof fetch} fetcher
  */
 async function fetchRSS (url, fetcher) {
+  const fn = fetcher ?? globalThis.fetch
   try {
-    const res = await fetcher(url, {
+    const res = await fn(url, {
       headers: {
         Accept: 'application/rss+xml, application/xml, text/xml, */*'
       }
@@ -355,6 +368,7 @@ function toResult (item) {
 export default new class NyaaPtBr extends AbstractSource {
   /** @type {import('./types').SearchFunction} */
   async single (query) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return []
     const candidates = await fetchCandidates(query)
     const episode = Number(query.episode ?? query.absoluteEpisodeNumber ?? 0)
 
@@ -389,6 +403,7 @@ export default new class NyaaPtBr extends AbstractSource {
 
   /** @type {import('./types').SearchFunction} */
   async batch (query) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return []
     const candidates = await fetchCandidates(query)
 
     const ranked = candidates
@@ -417,6 +432,7 @@ export default new class NyaaPtBr extends AbstractSource {
 
   /** @type {import('./types').SearchFunction} */
   async movie (query) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return []
     const candidates = await fetchCandidates(query)
     const ranked = candidates
       .filter(c => passesExclusions(c.title, query.exclusions))
@@ -434,6 +450,7 @@ export default new class NyaaPtBr extends AbstractSource {
   }
 
   async test () {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
     const res = await fetch(`${NYAA_BASE}/?page=rss&c=1_0&q=PT-BR&f=0`, {
       headers: { Accept: 'application/rss+xml' }
     })

@@ -7,15 +7,14 @@ A extensão consulta o feed RSS público do Nyaa, filtrando por marcadores PT-BR
 ## Como instalar no Hayase
 
 1. Abra o Hayase.
-2. Vá em **Settings → Extensions → Add Extension**.
-3. Cole a URL deste manifesto:
+2. Vá em **Settings → Extensions → Import Extensions** (ou na aba **Repositories**).
+3. Cole a URL do manifesto:
 
    ```
-   gh:sujirobase-ctrl/devin-hayase-nyaa-ptbr
+   https://raw.githubusercontent.com/sujirobase-ctrl/devin-hayase-nyaa-ptbr/main/index.json
    ```
 
-   (Equivalente a `https://esm.sh/gh/sujirobase-ctrl/devin-hayase-nyaa-ptbr/index.json`.)
-4. Salve e habilite a extensão "Nyaa PT-BR".
+4. Clique **Import Extensions** e habilite a extensão "Nyaa PT-BR".
 
 ## O que está incluso
 
